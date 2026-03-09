@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JPX Alpha Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      .reco-table {
+        table-layout: fixed;
+      }
+      .reco-table th:nth-child(3),
+      .reco-table td:nth-child(3) {
+        width: 16rem;
+      }
+      .reco-table th:nth-child(7),
+      .reco-table td:nth-child(7) {
+        width: 24rem;
+      }
+    </style>
+  </head>
+  <body class="min-h-screen bg-slate-950 text-slate-100">
+    <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <header class="mb-6">
+        <h1 class="text-3xl font-bold tracking-tight">JPX Alpha Engine</h1>
+        <p class="mt-2 text-sm text-slate-400">CSVを定期再読み込みして最新化</p>
+      </header>
+
+      <section class="space-y-6">
+        <article class="rounded-xl border border-emerald-700/40 bg-slate-900/80 shadow-lg shadow-emerald-950/40">
+          <div class="border-b border-emerald-700/30 px-4 py-3"><h2 class="text-lg font-semibold text-emerald-300">プライム買い候補</h2></div>
+          <div class="overflow-x-auto"><table class="reco-table min-w-full text-sm"><thead class="bg-slate-800/80 text-slate-300"><tr>
+            <th class="px-3 py-2 text-left font-medium">順位</th><th class="px-3 py-2 text-left font-medium">銘柄コード</th><th class="px-3 py-2 text-left font-medium">銘柄名</th><th class="px-3 py-2 text-left font-medium">現値</th><th class="px-3 py-2 text-left font-medium">前日比</th><th class="px-3 py-2 text-left font-medium">スコア</th><th class="px-3 py-2 text-left font-medium">スコアの主要な要因</th>
+          </tr></thead><tbody id="prime-buy" class="divide-y divide-slate-800"></tbody></table></div>
+        </article>
+
+        <article class="rounded-xl border border-emerald-700/40 bg-slate-900/80 shadow-lg shadow-emerald-950/40">
+          <div class="border-b border-emerald-700/30 px-4 py-3"><h2 class="text-lg font-semibold text-emerald-300">スタンダード買い候補</h2></div>
+          <div class="overflow-x-auto"><table class="reco-table min-w-full text-sm"><thead class="bg-slate-800/80 text-slate-300"><tr>
+            <th class="px-3 py-2 text-left font-medium">順位</th><th class="px-3 py-2 text-left font-medium">銘柄コード</th><th class="px-3 py-2 text-left font-medium">銘柄名</th><th class="px-3 py-2 text-left font-medium">現値</th><th class="px-3 py-2 text-left font-medium">前日比</th><th class="px-3 py-2 text-left font-medium">スコア</th><th class="px-3 py-2 text-left font-medium">スコアの主要な要因</th>
+          </tr></thead><tbody id="standard-buy" class="divide-y divide-slate-800"></tbody></table></div>
+        </article>
+
+        <article class="rounded-xl border border-emerald-700/40 bg-slate-900/80 shadow-lg shadow-emerald-950/40">
+          <div class="border-b border-emerald-700/30 px-4 py-3"><h2 class="text-lg font-semibold text-emerald-300">グロース買い候補</h2></div>
+          <div class="overflow-x-auto"><table class="reco-table min-w-full text-sm"><thead class="bg-slate-800/80 text-slate-300"><tr>
+            <th class="px-3 py-2 text-left font-medium">順位</th><th class="px-3 py-2 text-left font-medium">銘柄コード</th><th class="px-3 py-2 text-left font-medium">銘柄名</th><th class="px-3 py-2 text-left font-medium">現値</th><th class="px-3 py-2 text-left font-medium">前日比</th><th class="px-3 py-2 text-left font-medium">スコア</th><th class="px-3 py-2 text-left font-medium">スコアの主要な要因</th>
+          </tr></thead><tbody id="growth-buy" class="divide-y divide-slate-800"></tbody></table></div>
+        </article>
+
+        <article class="rounded-xl border border-orange-700/40 bg-slate-900/80 shadow-lg shadow-orange-950/40">
+          <div class="border-b border-orange-700/30 px-4 py-3"><h2 class="text-lg font-semibold text-orange-300">プライム売り候補</h2></div>
+          <div class="overflow-x-auto"><table class="reco-table min-w-full text-sm"><thead class="bg-slate-800/80 text-slate-300"><tr>
+            <th class="px-3 py-2 text-left font-medium">順位</th><th class="px-3 py-2 text-left font-medium">銘柄コード</th><th class="px-3 py-2 text-left font-medium">銘柄名</th><th class="px-3 py-2 text-left font-medium">現値</th><th class="px-3 py-2 text-left font-medium">前日比</th><th class="px-3 py-2 text-left font-medium">スコア</th><th class="px-3 py-2 text-left font-medium">スコアの主要な要因</th>
+          </tr></thead><tbody id="prime-sell" class="divide-y divide-slate-800"></tbody></table></div>
+        </article>
+
+        <article class="rounded-xl border border-orange-700/40 bg-slate-900/80 shadow-lg shadow-orange-950/40">
+          <div class="border-b border-orange-700/30 px-4 py-3"><h2 class="text-lg font-semibold text-orange-300">スタンダード売り候補</h2></div>
+          <div class="overflow-x-auto"><table class="reco-table min-w-full text-sm"><thead class="bg-slate-800/80 text-slate-300"><tr>
+            <th class="px-3 py-2 text-left font-medium">順位</th><th class="px-3 py-2 text-left font-medium">銘柄コード</th><th class="px-3 py-2 text-left font-medium">銘柄名</th><th class="px-3 py-2 text-left font-medium">現値</th><th class="px-3 py-2 text-left font-medium">前日比</th><th class="px-3 py-2 text-left font-medium">スコア</th><th class="px-3 py-2 text-left font-medium">スコアの主要な要因</th>
+          </tr></thead><tbody id="standard-sell" class="divide-y divide-slate-800"></tbody></table></div>
+        </article>
+
+        <article class="rounded-xl border border-orange-700/40 bg-slate-900/80 shadow-lg shadow-orange-950/40">
+          <div class="border-b border-orange-700/30 px-4 py-3"><h2 class="text-lg font-semibold text-orange-300">グロース売り候補</h2></div>
+          <div class="overflow-x-auto"><table class="reco-table min-w-full text-sm"><thead class="bg-slate-800/80 text-slate-300"><tr>
+            <th class="px-3 py-2 text-left font-medium">順位</th><th class="px-3 py-2 text-left font-medium">銘柄コード</th><th class="px-3 py-2 text-left font-medium">銘柄名</th><th class="px-3 py-2 text-left font-medium">現値</th><th class="px-3 py-2 text-left font-medium">前日比</th><th class="px-3 py-2 text-left font-medium">スコア</th><th class="px-3 py-2 text-left font-medium">スコアの主要な要因</th>
+          </tr></thead><tbody id="growth-sell" class="divide-y divide-slate-800"></tbody></table></div>
+        </article>
+      </section>
+
+      <p id="status" class="mt-4 text-sm text-slate-400">読み込み待機中...</p>
+    </main>
+
+    <script>
+      const CSV_URL = '/output/recommendations.csv';
+      const REFRESH_MS = 5 * 60 * 1000;
+
+      function parseCsvLine(line) {
+        const result = [];
+        let value = '';
+        let inQuote = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') {
+            if (inQuote && line[i + 1] === '"') {
+              value += '"';
+              i += 1;
+            } else {
+              inQuote = !inQuote;
+            }
+          } else if (ch === ',' && !inQuote) {
+            result.push(value);
+            value = '';
+          } else {
+            value += ch;
+          }
+        }
+        result.push(value);
+        return result;
+      }
+
+      function parseCsv(text) {
+        const lines = text.replace(/^\uFEFF/, '').trim().split(/\r?\n/);
+        if (lines.length <= 1) return [];
+        const headers = parseCsvLine(lines[0]);
+        return lines.slice(1).map((line) => {
+          const cols = parseCsvLine(line);
+          const row = {};
+          headers.forEach((h, idx) => {
+            row[h] = cols[idx] ?? '';
+          });
+          return row;
+        });
+      }
+
+      function formatPrice(value) {
+        const n = Number(value);
+        if (Number.isNaN(n)) return value ?? '';
+        return n.toLocaleString('ja-JP', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+      }
+
+      function rowHtml(item, toneClass) {
+        return `
+          <tr class="hover:bg-slate-800/50 transition-colors">
+            <td class="px-3 py-2">${item['順位'] ?? ''}</td>
+            <td class="px-3 py-2 font-mono">${item['銘柄コード'] ?? ''}</td>
+            <td class="px-3 py-2"><div class="max-w-sm overflow-hidden text-ellipsis" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.2rem;max-height:2.4rem;">${item['銘柄名'] ?? ''}</div></td>
+            <td class="px-3 py-2">${formatPrice(item['現値'])}</td>
+            <td class="px-3 py-2">${item['前日比'] ?? ''}</td>
+            <td class="px-3 py-2 font-semibold ${toneClass}">${item['スコア'] ?? ''}</td>
+            <td class="px-3 py-2 text-slate-300">${item['スコアの主要な要因'] ?? ''}</td>
+          </tr>
+        `;
+      }
+
+      function renderToTable(items, tbodyId, toneClass) {
+        const tbody = document.getElementById(tbodyId);
+        if (!items.length) {
+          tbody.innerHTML = '<tr><td colspan="7" class="px-3 py-3 text-slate-500">該当データなし</td></tr>';
+          return;
+        }
+        tbody.innerHTML = items.map((item) => rowHtml(item, toneClass)).join('');
+      }
+
+      function bySegment(rows, segment, isBuy) {
+        return rows.filter((row) => {
+          const score = Number(row['スコア'] || 0);
+          const segOk = (row['市場区分'] || '') === segment;
+          return segOk && (isBuy ? score >= 0 : score < 0);
+        });
+      }
+
+      async function refresh() {
+        const status = document.getElementById('status');
+        try {
+          const response = await fetch(`${CSV_URL}?t=${Date.now()}`, { cache: 'no-store' });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+          const text = await response.text();
+          const rows = parseCsv(text);
+
+          renderToTable(bySegment(rows, 'プライム', true), 'prime-buy', 'text-emerald-300');
+          renderToTable(bySegment(rows, 'スタンダード', true), 'standard-buy', 'text-emerald-300');
+          renderToTable(bySegment(rows, 'グロース', true), 'growth-buy', 'text-emerald-300');
+          renderToTable(bySegment(rows, 'プライム', false), 'prime-sell', 'text-orange-300');
+          renderToTable(bySegment(rows, 'スタンダード', false), 'standard-sell', 'text-orange-300');
+          renderToTable(bySegment(rows, 'グロース', false), 'growth-sell', 'text-orange-300');
+
+          const now = new Date();
+          status.textContent = `最終更新: ${now.toLocaleString('ja-JP')} / 表示件数 ${rows.length}件`;
+        } catch (err) {
+          status.textContent = `読み込み失敗: ${String(err)}`;
+        }
+      }
+
+      refresh();
+      setInterval(refresh, REFRESH_MS);
+    </script>
+  </body>
+</html>
+
+
+
