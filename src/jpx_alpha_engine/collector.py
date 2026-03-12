@@ -4,12 +4,16 @@ import logging
 import math
 import re
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import requests
 import yfinance as yf
 from bs4 import BeautifulSoup
+
+from .db import save_daily_technical_history
+from .tdnet_client import TdnetClient
 
 
 LOGGER = logging.getLogger(__name__)
@@ -197,6 +201,26 @@ def _fetch_kabutan_news_titles(code: str, limit: int = 20) -> list[str]:
     return titles
 
 
+def _load_daily_history(ticker: yf.Ticker, known_trade_date: object | None) -> pd.DataFrame:
+    if known_trade_date is None:
+        return ticker.history(period='30d', interval='1d', auto_adjust=False)
+
+    start = (pd.Timestamp(known_trade_date) - pd.Timedelta(days=10)).date().isoformat()
+    daily_1d = ticker.history(start=start, interval='1d', auto_adjust=False)
+    if daily_1d.empty:
+        return ticker.history(period='30d', interval='1d', auto_adjust=False)
+    return daily_1d
+
+
+def _load_intraday_history(ticker: yf.Ticker) -> pd.DataFrame:
+    intraday_5m = ticker.history(period='1d', interval='5m', auto_adjust=False)
+    usable = intraday_5m.dropna(subset=['Close']) if not intraday_5m.empty else intraday_5m
+    if len(usable) >= 24:
+        return intraday_5m
+
+    return ticker.history(period='2d', interval='5m', auto_adjust=False)
+
+
 def _extract_news_sentiment(ticker: yf.Ticker, code: str) -> dict[str, float]:
     scored_values: list[float] = []
 
@@ -227,8 +251,20 @@ def _extract_news_sentiment(ticker: yf.Ticker, code: str) -> dict[str, float]:
 def collect_market_snapshot(
     universe: list[UniverseRow],
     suppress_yfinance_warnings: bool = True,
+    tdnet_cache_path: str | None = None,
+    tdnet_lookback_days: int = 7,
+    tdnet_max_items: int = 1200,
+    db_url: str | None = None,
+    latest_daily_dates: dict[str, object] | None = None,
 ) -> tuple[pd.DataFrame, set[str], set[str]]:
     _configure_yfinance_logging(suppress_yfinance_warnings)
+
+    tdnet_client = TdnetClient(
+        cache_path=(Path(tdnet_cache_path) if tdnet_cache_path else Path('data/tdnet_cache.json')),
+        lookback_days=tdnet_lookback_days,
+        max_items=tdnet_max_items,
+    )
+    tdnet_feature_map = tdnet_client.build_feature_map([u.code for u in universe])
 
     rows: list[dict[str, object]] = []
     success_codes: set[str] = set()
@@ -242,8 +278,11 @@ def collect_market_snapshot(
             LOGGER.info('[%s/%s] collecting %s (%s)', idx, total, item.code, item.name)
 
             ticker = yf.Ticker(item.yf_ticker)
-            daily_1d = ticker.history(period='30d', interval='1d', auto_adjust=False)
-            intraday_5m = ticker.history(period='2d', interval='5m', auto_adjust=False)
+            known_trade_date = (latest_daily_dates or {}).get(item.code)
+            daily_1d = _load_daily_history(ticker, known_trade_date)
+            if db_url and not daily_1d.empty:
+                save_daily_technical_history(db_url, item.code, daily_1d)
+            intraday_5m = _load_intraday_history(ticker)
 
             data_source = 'intraday_5m'
             if intraday_5m.empty:
@@ -255,8 +294,37 @@ def collect_market_snapshot(
                 LOGGER.warning('[%s/%s] no price data for %s -> failed', idx, total, item.code)
                 continue
 
-            latest_close = float(intraday_5m['Close'].iloc[-1])
+            intraday_last_close = float(intraday_5m['Close'].iloc[-1])
             latest_ts = intraday_5m.index[-1]
+
+            latest_daily = daily_1d.tail(1)
+            if latest_daily.empty:
+                daily_trade_date = pd.Timestamp(latest_ts).date()
+                daily_open = np.nan
+                daily_high = np.nan
+                daily_low = np.nan
+                daily_close = latest_close
+                daily_adj_close = latest_close
+                daily_volume = np.nan
+            else:
+                drow = latest_daily.iloc[-1]
+                daily_trade_date = pd.Timestamp(latest_daily.index[-1]).date()
+                daily_open = _safe_float(drow.get('Open'))
+                daily_high = _safe_float(drow.get('High'))
+                daily_low = _safe_float(drow.get('Low'))
+                daily_close = _safe_float(drow.get('Close'))
+                daily_adj_close = _safe_float(drow.get('Adj Close', drow.get('Close')))
+                daily_volume = _safe_float(drow.get('Volume'))
+
+            latest_close = daily_close if not np.isnan(daily_close) else intraday_last_close
+
+            tdnet_features = tdnet_feature_map.get(item.code, {
+                'tdnet_sentiment': 0.0,
+                'tdnet_disclosure_count': 0.0,
+                'tdnet_positive_count': 0.0,
+                'tdnet_negative_count': 0.0,
+                'tdnet_earnings_revision_score': 0.0,
+            })
 
             rows.append(
                 {
@@ -267,9 +335,17 @@ def collect_market_snapshot(
                     'market_segment': item.market_segment,
                     'data_source': data_source,
                     'last_price': latest_close,
+                    'daily_trade_date': daily_trade_date,
+                    'daily_open': daily_open,
+                    'daily_high': daily_high,
+                    'daily_low': daily_low,
+                    'daily_close': daily_close,
+                    'daily_adj_close': daily_adj_close,
+                    'daily_volume': daily_volume,
                     **_calc_technical_features(intraday_5m, daily_1d),
                     **_extract_fundamentals(ticker),
                     **_extract_news_sentiment(ticker, item.code),
+                    **tdnet_features,
                 }
             )
             success_codes.add(item.code)
@@ -301,10 +377,12 @@ def collect_market_snapshot(
         LOGGER.info('Daily fallback used for %s symbols', fallback_count)
 
     LOGGER.info(
-        'Snapshot collection completed: rows=%s success=%s failed=%s',
+        'Snapshot collection completed: rows=%s success=%s failed=%s (tdnet_items=%s)',
         len(snapshot),
         len(success_codes),
         len(failed_codes),
+        len(tdnet_client.disclosures),
     )
     return snapshot, success_codes, failed_codes
+
 

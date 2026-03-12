@@ -1,6 +1,6 @@
 # jpx-alpha-engine
 
-日本株を対象に、1日1回テクニカル/ファンダメンタルズ/ニュース感情を収集し、売買候補の上位銘柄をCSV出力するエンジンです。`microsoft/qlib` を初期化して実行します。
+日本株を対象に、1日1回テクニカル/ファンダメンタルズ/ニュース感情/TDnet開示を収集し、売買候補の上位銘柄をCSV出力するエンジンです。`microsoft/qlib` を初期化して実行します。
 
 ## セットアップ (uv)
 
@@ -10,14 +10,41 @@ uv sync
 copy .env.example .env
 ```
 
-## PostgreSQL を Docker で起動
+## Docker で一括起動（推奨）
+
+`.env` を読んで起動します。
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
-デフォルト接続先:
-- `postgresql://jpx:jpxpass@localhost:5432/jpx_alpha`
+これで以下が起動します。
+- PostgreSQL (`localhost:5432`)
+- スケジューラ（毎日 16:30 JST に更新）
+- Web (`http://localhost:8081/web/index.html`)
+
+デフォルト動作:
+- `JPX_RUN_ON_START=false` の場合、起動時実行なし
+- 以降は毎日 `16:30`（`JPX_TIMEZONE=Asia/Tokyo`）で実行
+
+主な設定値:
+- 実行時刻: `JPX_SCHEDULE_HOUR`, `JPX_SCHEDULE_MINUTE`, `JPX_TIMEZONE`
+- 出力件数: `JPX_TOP_K`
+- 学習判定までの待ち時間: `JPX_PREDICTION_HORIZON_MINUTES`
+- 学習率: `JPX_LEARNING_RATE`
+- TDnet取り込み: `JPX_TDNET_LOOKBACK_DAYS`, `JPX_TDNET_MAX_ITEMS`, `JPX_TDNET_CACHE_PATH`
+
+## ログ確認
+
+```bash
+docker compose logs -f scheduler
+```
+
+## 手動実行（必要時）
+
+```bash
+uv run python -m src.jpx_alpha_engine.run_once
+```
 
 ## 過去数年分のテクニカルデータを蓄積
 
@@ -26,28 +53,6 @@ uv run python -m src.jpx_alpha_engine.backfill_technical
 ```
 
 - `JPX_BACKFILL_YEARS` 年分の日足OHLCVを `technical_history_daily` テーブルへ保存します。
-
-## 実行 (1日1回)
-
-```bash
-uv run python -m src.jpx_alpha_engine.run_scheduler
-```
-
-毎回の実行で以下を実施します。
-- 最新特徴量を収集して `technical_snapshots` に保存
-- 予測（買い/売り）を `model_predictions` に保存
-- 期限到来した予測の正誤を判定して学習
-- 学習済み重みで最新スコアを算出し `output/recommendations.csv` を更新
-
-CSV: `output/recommendations.csv`（買い候補上位N件 + 売り候補上位N件。Nは `JPX_TOP_K`）
-
-## 画面表示
-
-```bash
-uv run python -m http.server 8080
-```
-
-[http://localhost:8080/web/index.html](http://localhost:8080/web/index.html)
 
 ## 学習ロジックの概要
 
@@ -60,14 +65,7 @@ uv run python -m http.server 8080
 
 - qlibの地域定数に日本専用リージョンがないため `REG_US` で初期化しています。
 - ニュースは `yfinance` と `kabutan.jp` の見出しを収集し、ポジ/ネガ辞書でセンチメント化します。
-
-
-
-## ユニバースを増やす（JPX自動生成）
-
-```bash
-uv run python -m src.jpx_alpha_engine.build_universe_from_jpx
-```
-
-- 東証プライム銘柄を優先して `data/universe_jp.csv` を再生成します。
-- その後に `uv run python -m src.jpx_alpha_engine.backfill_technical` を再実行してください。
+- TDnetの適時開示データを取り込み、開示トーン・開示件数・業績修正の傾きをスコアと学習に反映します。
+- Web画面は `output/recommendations.csv` を5分ごとに再読み込みします。
+- `JPX_FAILURE_THRESHOLD` 回連続で取得失敗した銘柄は、`data/universe_failures.json` に記録したうえで `data/universe_jp.csv` から自動除外します。
+- 自動除外した銘柄を戻す場合は、`data/universe_jp.csv` と `data/universe_failures.json` を手動で修正してください。

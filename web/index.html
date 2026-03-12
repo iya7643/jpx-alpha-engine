@@ -15,6 +15,10 @@
       }
       .reco-table th:nth-child(7),
       .reco-table td:nth-child(7) {
+        width: 7rem;
+      }
+      .reco-table th:nth-child(8),
+      .reco-table td:nth-child(8) {
         width: 24rem;
       }
     </style>
@@ -29,44 +33,32 @@
       <section class="space-y-6">
         <article class="rounded-xl border border-emerald-700/40 bg-slate-900/80 shadow-lg shadow-emerald-950/40">
           <div class="border-b border-emerald-700/30 px-4 py-3"><h2 class="text-lg font-semibold text-emerald-300">プライム買い候補</h2></div>
-          <div class="overflow-x-auto"><table class="reco-table min-w-full text-sm"><thead class="bg-slate-800/80 text-slate-300"><tr>
-            <th class="px-3 py-2 text-left font-medium">順位</th><th class="px-3 py-2 text-left font-medium">銘柄コード</th><th class="px-3 py-2 text-left font-medium">銘柄名</th><th class="px-3 py-2 text-left font-medium">現値</th><th class="px-3 py-2 text-left font-medium">前日比</th><th class="px-3 py-2 text-left font-medium">スコア</th><th class="px-3 py-2 text-left font-medium">スコアの主要な要因</th>
-          </tr></thead><tbody id="prime-buy" class="divide-y divide-slate-800"></tbody></table></div>
+          <div class="overflow-x-auto"><table class="reco-table min-w-full text-sm"><thead class="bg-slate-800/80 text-slate-300"><tr><th class="px-3 py-2 text-left font-medium">順位</th><th class="px-3 py-2 text-left font-medium">銘柄コード</th><th class="px-3 py-2 text-left font-medium">銘柄名</th><th class="px-3 py-2 text-left font-medium">終値</th><th class="px-3 py-2 text-left font-medium">前日比</th><th class="px-3 py-2 text-left font-medium">スコア</th><th class="px-3 py-2 text-left font-medium">信頼度</th><th class="px-3 py-2 text-left font-medium">スコアの主な要因</th></tr></thead><tbody id="prime-buy" class="divide-y divide-slate-800"></tbody></table></div>
         </article>
 
         <article class="rounded-xl border border-emerald-700/40 bg-slate-900/80 shadow-lg shadow-emerald-950/40">
           <div class="border-b border-emerald-700/30 px-4 py-3"><h2 class="text-lg font-semibold text-emerald-300">スタンダード買い候補</h2></div>
-          <div class="overflow-x-auto"><table class="reco-table min-w-full text-sm"><thead class="bg-slate-800/80 text-slate-300"><tr>
-            <th class="px-3 py-2 text-left font-medium">順位</th><th class="px-3 py-2 text-left font-medium">銘柄コード</th><th class="px-3 py-2 text-left font-medium">銘柄名</th><th class="px-3 py-2 text-left font-medium">現値</th><th class="px-3 py-2 text-left font-medium">前日比</th><th class="px-3 py-2 text-left font-medium">スコア</th><th class="px-3 py-2 text-left font-medium">スコアの主要な要因</th>
-          </tr></thead><tbody id="standard-buy" class="divide-y divide-slate-800"></tbody></table></div>
+          <div class="overflow-x-auto"><table class="reco-table min-w-full text-sm"><thead class="bg-slate-800/80 text-slate-300"><tr><th class="px-3 py-2 text-left font-medium">順位</th><th class="px-3 py-2 text-left font-medium">銘柄コード</th><th class="px-3 py-2 text-left font-medium">銘柄名</th><th class="px-3 py-2 text-left font-medium">終値</th><th class="px-3 py-2 text-left font-medium">前日比</th><th class="px-3 py-2 text-left font-medium">スコア</th><th class="px-3 py-2 text-left font-medium">信頼度</th><th class="px-3 py-2 text-left font-medium">スコアの主な要因</th></tr></thead><tbody id="standard-buy" class="divide-y divide-slate-800"></tbody></table></div>
         </article>
 
         <article class="rounded-xl border border-emerald-700/40 bg-slate-900/80 shadow-lg shadow-emerald-950/40">
           <div class="border-b border-emerald-700/30 px-4 py-3"><h2 class="text-lg font-semibold text-emerald-300">グロース買い候補</h2></div>
-          <div class="overflow-x-auto"><table class="reco-table min-w-full text-sm"><thead class="bg-slate-800/80 text-slate-300"><tr>
-            <th class="px-3 py-2 text-left font-medium">順位</th><th class="px-3 py-2 text-left font-medium">銘柄コード</th><th class="px-3 py-2 text-left font-medium">銘柄名</th><th class="px-3 py-2 text-left font-medium">現値</th><th class="px-3 py-2 text-left font-medium">前日比</th><th class="px-3 py-2 text-left font-medium">スコア</th><th class="px-3 py-2 text-left font-medium">スコアの主要な要因</th>
-          </tr></thead><tbody id="growth-buy" class="divide-y divide-slate-800"></tbody></table></div>
+          <div class="overflow-x-auto"><table class="reco-table min-w-full text-sm"><thead class="bg-slate-800/80 text-slate-300"><tr><th class="px-3 py-2 text-left font-medium">順位</th><th class="px-3 py-2 text-left font-medium">銘柄コード</th><th class="px-3 py-2 text-left font-medium">銘柄名</th><th class="px-3 py-2 text-left font-medium">終値</th><th class="px-3 py-2 text-left font-medium">前日比</th><th class="px-3 py-2 text-left font-medium">スコア</th><th class="px-3 py-2 text-left font-medium">信頼度</th><th class="px-3 py-2 text-left font-medium">スコアの主な要因</th></tr></thead><tbody id="growth-buy" class="divide-y divide-slate-800"></tbody></table></div>
         </article>
 
         <article class="rounded-xl border border-orange-700/40 bg-slate-900/80 shadow-lg shadow-orange-950/40">
           <div class="border-b border-orange-700/30 px-4 py-3"><h2 class="text-lg font-semibold text-orange-300">プライム売り候補</h2></div>
-          <div class="overflow-x-auto"><table class="reco-table min-w-full text-sm"><thead class="bg-slate-800/80 text-slate-300"><tr>
-            <th class="px-3 py-2 text-left font-medium">順位</th><th class="px-3 py-2 text-left font-medium">銘柄コード</th><th class="px-3 py-2 text-left font-medium">銘柄名</th><th class="px-3 py-2 text-left font-medium">現値</th><th class="px-3 py-2 text-left font-medium">前日比</th><th class="px-3 py-2 text-left font-medium">スコア</th><th class="px-3 py-2 text-left font-medium">スコアの主要な要因</th>
-          </tr></thead><tbody id="prime-sell" class="divide-y divide-slate-800"></tbody></table></div>
+          <div class="overflow-x-auto"><table class="reco-table min-w-full text-sm"><thead class="bg-slate-800/80 text-slate-300"><tr><th class="px-3 py-2 text-left font-medium">順位</th><th class="px-3 py-2 text-left font-medium">銘柄コード</th><th class="px-3 py-2 text-left font-medium">銘柄名</th><th class="px-3 py-2 text-left font-medium">終値</th><th class="px-3 py-2 text-left font-medium">前日比</th><th class="px-3 py-2 text-left font-medium">スコア</th><th class="px-3 py-2 text-left font-medium">信頼度</th><th class="px-3 py-2 text-left font-medium">スコアの主な要因</th></tr></thead><tbody id="prime-sell" class="divide-y divide-slate-800"></tbody></table></div>
         </article>
 
         <article class="rounded-xl border border-orange-700/40 bg-slate-900/80 shadow-lg shadow-orange-950/40">
           <div class="border-b border-orange-700/30 px-4 py-3"><h2 class="text-lg font-semibold text-orange-300">スタンダード売り候補</h2></div>
-          <div class="overflow-x-auto"><table class="reco-table min-w-full text-sm"><thead class="bg-slate-800/80 text-slate-300"><tr>
-            <th class="px-3 py-2 text-left font-medium">順位</th><th class="px-3 py-2 text-left font-medium">銘柄コード</th><th class="px-3 py-2 text-left font-medium">銘柄名</th><th class="px-3 py-2 text-left font-medium">現値</th><th class="px-3 py-2 text-left font-medium">前日比</th><th class="px-3 py-2 text-left font-medium">スコア</th><th class="px-3 py-2 text-left font-medium">スコアの主要な要因</th>
-          </tr></thead><tbody id="standard-sell" class="divide-y divide-slate-800"></tbody></table></div>
+          <div class="overflow-x-auto"><table class="reco-table min-w-full text-sm"><thead class="bg-slate-800/80 text-slate-300"><tr><th class="px-3 py-2 text-left font-medium">順位</th><th class="px-3 py-2 text-left font-medium">銘柄コード</th><th class="px-3 py-2 text-left font-medium">銘柄名</th><th class="px-3 py-2 text-left font-medium">終値</th><th class="px-3 py-2 text-left font-medium">前日比</th><th class="px-3 py-2 text-left font-medium">スコア</th><th class="px-3 py-2 text-left font-medium">信頼度</th><th class="px-3 py-2 text-left font-medium">スコアの主な要因</th></tr></thead><tbody id="standard-sell" class="divide-y divide-slate-800"></tbody></table></div>
         </article>
 
         <article class="rounded-xl border border-orange-700/40 bg-slate-900/80 shadow-lg shadow-orange-950/40">
           <div class="border-b border-orange-700/30 px-4 py-3"><h2 class="text-lg font-semibold text-orange-300">グロース売り候補</h2></div>
-          <div class="overflow-x-auto"><table class="reco-table min-w-full text-sm"><thead class="bg-slate-800/80 text-slate-300"><tr>
-            <th class="px-3 py-2 text-left font-medium">順位</th><th class="px-3 py-2 text-left font-medium">銘柄コード</th><th class="px-3 py-2 text-left font-medium">銘柄名</th><th class="px-3 py-2 text-left font-medium">現値</th><th class="px-3 py-2 text-left font-medium">前日比</th><th class="px-3 py-2 text-left font-medium">スコア</th><th class="px-3 py-2 text-left font-medium">スコアの主要な要因</th>
-          </tr></thead><tbody id="growth-sell" class="divide-y divide-slate-800"></tbody></table></div>
+          <div class="overflow-x-auto"><table class="reco-table min-w-full text-sm"><thead class="bg-slate-800/80 text-slate-300"><tr><th class="px-3 py-2 text-left font-medium">順位</th><th class="px-3 py-2 text-left font-medium">銘柄コード</th><th class="px-3 py-2 text-left font-medium">銘柄名</th><th class="px-3 py-2 text-left font-medium">終値</th><th class="px-3 py-2 text-left font-medium">前日比</th><th class="px-3 py-2 text-left font-medium">スコア</th><th class="px-3 py-2 text-left font-medium">信頼度</th><th class="px-3 py-2 text-left font-medium">スコアの主な要因</th></tr></thead><tbody id="growth-sell" class="divide-y divide-slate-800"></tbody></table></div>
         </article>
       </section>
 
@@ -127,10 +119,11 @@
             <td class="px-3 py-2">${item['順位'] ?? ''}</td>
             <td class="px-3 py-2 font-mono">${item['銘柄コード'] ?? ''}</td>
             <td class="px-3 py-2"><div class="max-w-sm overflow-hidden text-ellipsis" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.2rem;max-height:2.4rem;">${item['銘柄名'] ?? ''}</div></td>
-            <td class="px-3 py-2">${formatPrice(item['現値'])}</td>
+            <td class="px-3 py-2">${formatPrice(item['終値'] ?? item['現値'])}</td>
             <td class="px-3 py-2">${item['前日比'] ?? ''}</td>
             <td class="px-3 py-2 font-semibold ${toneClass}">${item['スコア'] ?? ''}</td>
-            <td class="px-3 py-2 text-slate-300">${item['スコアの主要な要因'] ?? ''}</td>
+            <td class="px-3 py-2 text-slate-200">${item['信頼度'] ?? '-'}</td>
+            <td class="px-3 py-2 text-slate-300">${item['スコアの主な要因'] ?? item['スコアの主要な要因'] ?? ''}</td>
           </tr>
         `;
       }
@@ -138,7 +131,7 @@
       function renderToTable(items, tbodyId, toneClass) {
         const tbody = document.getElementById(tbodyId);
         if (!items.length) {
-          tbody.innerHTML = '<tr><td colspan="7" class="px-3 py-3 text-slate-500">該当データなし</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="8" class="px-3 py-3 text-slate-500">該当データなし</td></tr>';
           return;
         }
         tbody.innerHTML = items.map((item) => rowHtml(item, toneClass)).join('');
@@ -180,6 +173,4 @@
     </script>
   </body>
 </html>
-
-
 

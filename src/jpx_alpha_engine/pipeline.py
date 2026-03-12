@@ -10,8 +10,11 @@ from .collector import collect_market_snapshot, load_universe
 from .config import Settings
 from .db import (
     bootstrap_factor_weights,
+    estimate_reliability_percent,
     init_db,
+    load_latest_trade_dates,
     load_factor_weights,
+    load_score_reliability_stats,
     save_snapshot_and_predictions,
 )
 from .learning import apply_learning_feedback
@@ -54,6 +57,19 @@ def _prune_universe_csv(universe_path: str, excluded_codes: set[str]) -> int:
     return removed
 
 
+
+def _attach_confidence(recommendation: pd.DataFrame, db_url: str) -> pd.DataFrame:
+    if recommendation.empty:
+        recommendation['信頼度'] = pd.Series(dtype='object')
+        return recommendation
+
+    stats = load_score_reliability_stats(db_url)
+    with_conf = recommendation.copy()
+    with_conf['信頼度'] = with_conf['スコア'].apply(
+        lambda x: f"{estimate_reliability_percent(x, stats):.1f}%"
+    )
+    return with_conf
+
 def run_pipeline(settings: Settings) -> pd.DataFrame:
     settings.snapshot_dir.mkdir(parents=True, exist_ok=True)
     settings.output_csv_path.parent.mkdir(parents=True, exist_ok=True)
@@ -66,6 +82,8 @@ def run_pipeline(settings: Settings) -> pd.DataFrame:
         settings.database_url,
         settings.prediction_horizon_minutes,
         settings.learning_rate,
+        max_predictions_per_run=settings.learning_max_predictions_per_run,
+        suppress_yfinance_warnings=settings.suppress_yfinance_warnings,
     )
     if learned_count:
         LOGGER.info('Applied learning feedback for %s predictions', learned_count)
@@ -86,9 +104,19 @@ def run_pipeline(settings: Settings) -> pd.DataFrame:
             len(universe) - len(active_universe),
         )
 
+    latest_daily_dates = load_latest_trade_dates(
+        settings.database_url,
+        [u.code for u in active_universe],
+    )
+
     snapshot, success_codes, failed_codes = collect_market_snapshot(
         active_universe,
         suppress_yfinance_warnings=settings.suppress_yfinance_warnings,
+        tdnet_cache_path=str(settings.tdnet_cache_path),
+        tdnet_lookback_days=settings.tdnet_lookback_days,
+        tdnet_max_items=settings.tdnet_max_items,
+        db_url=settings.database_url,
+        latest_daily_dates=latest_daily_dates,
     )
 
     for u in active_universe:
@@ -116,6 +144,7 @@ def run_pipeline(settings: Settings) -> pd.DataFrame:
 
     scored = score_snapshot(snapshot, weight_overrides=current_weights)
     recommendation = build_recommendation_csv(scored, settings.top_k)
+    recommendation = _attach_confidence(recommendation, settings.database_url)
 
     recommendation.to_csv(settings.output_csv_path, index=False, encoding='utf-8-sig')
     save_snapshot_and_predictions(
@@ -133,3 +162,7 @@ def run_pipeline(settings: Settings) -> pd.DataFrame:
 
     LOGGER.info('Wrote recommendation CSV: %s', settings.output_csv_path)
     return recommendation
+
+
+
+

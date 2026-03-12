@@ -7,3 +7,4 @@ output/
 data/*.csv
 data/*.json
 !data/README.md
+data/snapshots/

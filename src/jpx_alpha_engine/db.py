@@ -173,6 +173,39 @@ def save_snapshot_and_predictions(
             for _, row in merged.iterrows():
                 captured_at = pd.Timestamp(row['timestamp']).to_pydatetime()
 
+                cur.execute(
+                    """
+                    INSERT INTO technical_history_daily (
+                        code,
+                        trade_date,
+                        open_price,
+                        high_price,
+                        low_price,
+                        close_price,
+                        adj_close,
+                        volume
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (code, trade_date)
+                    DO UPDATE SET
+                        open_price = EXCLUDED.open_price,
+                        high_price = EXCLUDED.high_price,
+                        low_price = EXCLUDED.low_price,
+                        close_price = EXCLUDED.close_price,
+                        adj_close = EXCLUDED.adj_close,
+                        volume = EXCLUDED.volume
+                    """,
+                    (
+                        str(row['code']),
+                        pd.Timestamp(row.get('daily_trade_date', row['timestamp'])).date(),
+                        _coerce_scalar_float(row.get('daily_open')),
+                        _coerce_scalar_float(row.get('daily_high')),
+                        _coerce_scalar_float(row.get('daily_low')),
+                        _coerce_scalar_float(row.get('daily_close', row.get('last_price'))),
+                        _coerce_scalar_float(row.get('daily_adj_close', row.get('daily_close', row.get('last_price')))),
+                        _coerce_scalar_float(row.get('daily_volume')),
+                    ),
+                )
                 feature_payload = {
                     'ret_5m': _coerce_scalar_float(row.get('ret_5m')),
                     'ret_1d': _coerce_scalar_float(row.get('ret_1d')),
@@ -185,6 +218,11 @@ def save_snapshot_and_predictions(
                     'dividend_yield': _coerce_scalar_float(row.get('dividend_yield')),
                     'news_sentiment': _coerce_scalar_float(row.get('news_sentiment')),
                     'news_article_count': _coerce_scalar_float(row.get('news_article_count')),
+                    'tdnet_sentiment': _coerce_scalar_float(row.get('tdnet_sentiment')),
+                    'tdnet_disclosure_count': _coerce_scalar_float(row.get('tdnet_disclosure_count')),
+                    'tdnet_positive_count': _coerce_scalar_float(row.get('tdnet_positive_count')),
+                    'tdnet_negative_count': _coerce_scalar_float(row.get('tdnet_negative_count')),
+                    'tdnet_earnings_revision_score': _coerce_scalar_float(row.get('tdnet_earnings_revision_score')),
                 }
 
                 cur.execute(
@@ -242,14 +280,31 @@ def fetch_unevaluated_predictions(db_url: str, horizon_minutes: int) -> list[dic
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, predicted_at, code, signal, predicted_price, factor_json
-                FROM model_predictions
-                WHERE evaluated_at IS NULL
-                  AND predicted_at <= NOW() - (%s || ' minutes')::interval
-                  AND horizon_minutes = %s
-                ORDER BY predicted_at ASC
+                SELECT
+                    mp.id,
+                    mp.predicted_at,
+                    mp.code,
+                    mp.signal,
+                    mp.predicted_price,
+                    mp.factor_json,
+                    ((mp.predicted_at + (%s || ' minutes')::interval) AT TIME ZONE 'Asia/Tokyo')::date AS target_trade_date,
+                    th.trade_date AS eval_trade_date,
+                    th.close_price AS eval_close_price
+                FROM model_predictions mp
+                LEFT JOIN LATERAL (
+                    SELECT trade_date, close_price
+                    FROM technical_history_daily
+                    WHERE code = mp.code
+                      AND trade_date >= ((mp.predicted_at + (%s || ' minutes')::interval) AT TIME ZONE 'Asia/Tokyo')::date
+                    ORDER BY trade_date ASC
+                    LIMIT 1
+                ) th ON TRUE
+                WHERE mp.evaluated_at IS NULL
+                  AND mp.predicted_at <= NOW() - (%s || ' minutes')::interval
+                  AND mp.horizon_minutes = %s
+                ORDER BY mp.predicted_at ASC
                 """,
-                (horizon_minutes, horizon_minutes),
+                (horizon_minutes, horizon_minutes, horizon_minutes, horizon_minutes),
             )
             rows = cur.fetchall()
 
@@ -263,6 +318,9 @@ def fetch_unevaluated_predictions(db_url: str, horizon_minutes: int) -> list[dic
                 'signal': str(row[3]),
                 'predicted_price': float(row[4]),
                 'factor_json': row[5],
+                'target_trade_date': row[6],
+                'eval_trade_date': row[7],
+                'eval_close_price': _coerce_scalar_float(row[8], default=float('nan')),
             }
         )
     return results
@@ -334,3 +392,145 @@ def save_daily_technical_history(db_url: str, code: str, history_df: pd.DataFram
                 inserted += 1
         conn.commit()
     return inserted
+
+
+def load_score_reliability_stats(
+    db_url: str,
+    bucket_size: int = 50,
+    min_samples: int = 10,
+) -> dict[str, object]:
+    bucket_size = max(1, int(bucket_size))
+    min_samples = max(1, int(min_samples))
+
+    with _connect(db_url) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    CASE WHEN score >= 0 THEN 'buy' ELSE 'sell' END AS side,
+                    FLOOR(ABS(score) / %s) * %s AS bucket_start,
+                    COUNT(*) AS n,
+                    AVG(CASE WHEN is_correct THEN 1.0 ELSE 0.0 END) AS win_rate
+                FROM model_predictions
+                WHERE is_correct IS NOT NULL
+                GROUP BY 1, 2
+                HAVING COUNT(*) >= %s
+                """,
+                (bucket_size, bucket_size, min_samples),
+            )
+            bucket_rows = cur.fetchall()
+
+            cur.execute(
+                """
+                SELECT
+                    CASE WHEN score >= 0 THEN 'buy' ELSE 'sell' END AS side,
+                    COUNT(*) AS n,
+                    AVG(CASE WHEN is_correct THEN 1.0 ELSE 0.0 END) AS win_rate
+                FROM model_predictions
+                WHERE is_correct IS NOT NULL
+                GROUP BY 1
+                """
+            )
+            global_rows = cur.fetchall()
+
+    buckets: dict[str, dict[int, float]] = {'buy': {}, 'sell': {}}
+    for side, bucket_start, _, win_rate in bucket_rows:
+        side_key = str(side)
+        if side_key not in buckets:
+            continue
+        buckets[side_key][int(float(bucket_start))] = float(win_rate)
+
+    global_rates: dict[str, float] = {'buy': 0.5, 'sell': 0.5}
+    for side, _, win_rate in global_rows:
+        side_key = str(side)
+        if side_key in global_rates and win_rate is not None:
+            global_rates[side_key] = float(win_rate)
+
+    return {
+        'bucket_size': bucket_size,
+        'global_rates': global_rates,
+        'buckets': buckets,
+    }
+
+
+def estimate_reliability_percent(score: object, stats: dict[str, object]) -> float:
+    try:
+        score_f = float(score)
+    except (TypeError, ValueError):
+        score_f = 0.0
+
+    side = 'buy' if score_f >= 0 else 'sell'
+    bucket_size = int(stats.get('bucket_size', 50) or 50)
+    bucket_start = int(abs(score_f) // bucket_size * bucket_size)
+
+    buckets = stats.get('buckets', {})
+    side_buckets = buckets.get(side, {}) if isinstance(buckets, dict) else {}
+    if isinstance(side_buckets, dict) and bucket_start in side_buckets:
+        return float(side_buckets[bucket_start]) * 100.0
+
+    global_rates = stats.get('global_rates', {})
+    if isinstance(global_rates, dict):
+        return float(global_rates.get(side, 0.5)) * 100.0
+
+    return 50.0
+
+def load_latest_trade_dates(db_url: str, codes: list[str]) -> dict[str, object]:
+    if not codes:
+        return {}
+
+    normalized = [str(c) for c in codes if str(c)]
+    if not normalized:
+        return {}
+
+    sql = """
+        SELECT DISTINCT ON (code)
+            code,
+            trade_date
+        FROM technical_history_daily
+        WHERE code = ANY(%s)
+        ORDER BY code, trade_date DESC
+    """
+
+    latest_dates: dict[str, object] = {}
+    with _connect(db_url) as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, (normalized,))
+            for code, trade_date in cur.fetchall():
+                if trade_date is None:
+                    continue
+                latest_dates[str(code)] = trade_date
+
+    return latest_dates
+
+
+def load_latest_close_prices(db_url: str, codes: list[str]) -> dict[str, float]:
+    if not codes:
+        return {}
+
+    normalized = [str(c) for c in codes if str(c)]
+    if not normalized:
+        return {}
+
+    sql = """
+        SELECT DISTINCT ON (code)
+            code,
+            close_price
+        FROM technical_history_daily
+        WHERE code = ANY(%s)
+        ORDER BY code, trade_date DESC
+    """
+
+    prices: dict[str, float] = {}
+    with _connect(db_url) as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, (normalized,))
+            for code, close_price in cur.fetchall():
+                if close_price is None:
+                    continue
+                prices[str(code)] = float(close_price)
+
+    return prices
+
+
+
+

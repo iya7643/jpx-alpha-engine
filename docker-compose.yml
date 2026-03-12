@@ -13,6 +13,43 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jpx -d jpx_alpha"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jpx-alpha-scheduler
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      JPX_DATABASE_URL: postgresql://jpx:jpxpass@postgres:5432/jpx_alpha
+    volumes:
+      - ./output:/app/output
+      - ./data:/app/data
+
+  web:
+    image: nginx:1.27-alpine
+    container_name: jpx-alpha-web
+    restart: unless-stopped
+    depends_on:
+      - scheduler
+    ports:
+      - "8081:80"
+    volumes:
+      - ./web/index.html:/usr/share/nginx/html/index.html:ro
+      - ./output:/usr/share/nginx/output:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
 
 volumes:
   postgres_data:
+
+
